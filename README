@@ -1,0 +1,33 @@
+initramfs hook for dmcrypt "localcrypt"
+
+
+For expert users only!
+
+
+This repository contains an initramfs-tools hook that dumps keys for all
+active dm_crypt targets at initramfs creation into the initramfs file. An
+additional script will then re-create all these dm_crypt targets during the next
+boot. Additionally, mkinitramfs will be patched to ensure that create initramfs
+images are only owner-readable.
+
+Since this approach makes use of raw `dmsetup table`, it implicitly relies on
+source device major and minor numbers to stay fixed between initramfs creation
+and the reboot. This is typically the case for /dev/sd* devices but you may
+encounter problems with mdraid or lvm based source devices.
+
+As a beauitful side-effect, you will not need the cryptsetup binary, let alone
+dropbear in your initramfs anymore.
+
+If (and only if) /boot itself resides on an encrypted dm_crypt target, this is
+reasonably secure for a kexec based setup, where no unencrypted data resides on
+the hard-disk at all, yet allowing for seamless unattended reboots (e.g. for
+applying kernel upgrades).
+
+It is left as an exercise to the reader how to boot the system after full power
+off.
+
+
+Trivially arm your /etc/initramfs-tools and /etc/default/kexec.d using the
+following commands:
+
+# make && make install
