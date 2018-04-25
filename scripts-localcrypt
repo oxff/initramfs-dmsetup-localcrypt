@@ -1,0 +1,19 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+        echo "$PREREQ"
+}
+
+case $1 in
+# get pre-requisites
+prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+/scripts/localcrypt
+[ -e /sbin/lvm ] && /sbin/lvm vgchange -a y

@@ -1,0 +1,50 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+        echo "$PREREQ"
+}
+
+case $1 in
+prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+case "$(stat -c %D /boot/.)" in
+	08??)
+		echo '/boot seems to be on a regular SCSI block device!' >&2
+		exit 1
+		;;
+	*)
+		;;
+esac
+
+if ! [ "$(stat -c %D /boot/.)" = "$(stat -c %D /.)" ]; then
+	echo '/boot seems to be on a different device than / !' >&2
+	exit 1
+fi
+
+mkdir -p "${DESTDIR}/scripts"
+
+echo '#!/bin/sh' > "${DESTDIR}/scripts/localcrypt"
+dmsetup table --showkeys | \
+	awk '$4 == "crypt" {
+		name=$1;
+		sub(/:$/, "", name);
+		$1 = "";
+		sub(/^ +/, "", $0);
+		print "dmsetup create " name " --table \"" $0 "\"";
+	}' >> "${DESTDIR}/scripts/localcrypt"
+chmod 755 "${DESTDIR}/scripts/localcrypt"
+
+for mod in dm_mod dm_crypt aes-x86_64 aesni-intel; do
+	manual_add_modules "$mod"
+done
+
+copy_exec /sbin/dmsetup

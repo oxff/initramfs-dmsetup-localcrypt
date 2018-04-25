@@ -1,0 +1,14 @@
+# ensure the kexec command-line contains a panic= option, so that we never
+# reach the emergency shell (which could disclose key material on console)
+
+if [ -z "${APPEND}" ]; then
+    APPEND="$(cat /proc/cmdline)"
+fi
+
+case "${APPEND}" in
+    *panic=*)
+        ;;
+    *)
+        APPEND="${APPEND} panic=10"
+        ;;
+esac
