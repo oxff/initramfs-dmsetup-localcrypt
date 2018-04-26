@@ -1,9 +1,10 @@
 --- a/mkinitramfs	2018-02-20 21:34:46.000000000 +0000
 +++ b/mkinitramfs	1970-01-01 00:00:00.000000000 +0000
-@@ -421,4 +421,6 @@
- 	cat "${__TMPCPIOGZ}" >>"${outfile}" || exit 1
- fi
- 
-+chmod 600 "${outfile}"
-+
- exit 0
+@@ -1,6 +1,6 @@
+ #!/bin/sh
+
+-umask 0022
++umask 0077
+ export PATH='/usr/bin:/sbin:/bin'
+
+ # Defaults
