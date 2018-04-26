@@ -17,6 +17,7 @@ esac
 # . /usr/share/initramfs-tools/hook-functions
 
 mmhextodec() {
+    local major minor
     set -- ${1##*[!0-9a-fA-F]*}
 
     major=$((0x$1 >> 8))
@@ -30,7 +31,7 @@ mmblock_prop() {
 }
 
 has_crypt_parent() {
-    local mm DM_NAME DEV_NAME
+    local mm DM_NAME DEVNAME
 
     mm="$1"
 
