@@ -14,7 +14,7 @@ prereqs)
         ;;
 esac
 
-# . /usr/share/initramfs-tools/hook-functions
+. /usr/share/initramfs-tools/hook-functions
 
 mmhextodec() {
     local major minor
