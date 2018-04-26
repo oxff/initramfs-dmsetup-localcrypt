@@ -51,9 +51,31 @@ has_crypt_parent() {
             echo "dmtype=${dmtype} mm=${mm}"
         })
         
-        [ "$dmtype" == "crypt" ] && return 0
+        [ "$dmtype" = "crypt" ] && return 0
     done
 }
+
+dump_table() {
+    local name off length dmtype cipher key i mm j opts MD_UUID ID_FS_UUID DEVNAME
+
+    dmsetup table --showkeys | \
+        while read name off length dmtype cipher key i mm j opts; do
+            [ "$dmtype" != "crypt" ] && continue
+
+        eval $(mmblock_prop "${mm}" MD_UUID) $(mmblock_prop "${mm}" ID_FS_UUID) $(mmblock_prop "${mm}" DEVNAME)
+
+            if ! [ -z "$MD_UUID" ]; then
+                mm="/dev/disk/by-id/md-uuid-${MD_UUID}"
+            elif ! [ -z "$ID_FS_UUID" ]; then
+                mm="/dev/disk/by-uuid/${ID_FS_UUID}"
+            else
+                mm="${DEVNAME}"
+            fi
+
+            echo "dmsetup create $(echo ${name} | tr -d :) --table \"$off $length $dmtype $cipher $key $i \$(stat -Lc '%t %T' '$mm' | ( read maj min; echo \$((0x\$maj)):\$((0x\$min)) )) $j $opts\""
+        done
+}
+
 
 if ! has_crypt_parent $(mmhextodec "$(stat -c %D /boot)"); then
     echo "ERROR: /boot doesn't seem to reside on a dm_crypt device!" >&2
@@ -64,14 +86,7 @@ fi
 mkdir -p "${DESTDIR}/scripts"
 
 echo '#!/bin/sh' > "${DESTDIR}/scripts/localcrypt"
-dmsetup table --showkeys | \
-	awk '$4 == "crypt" {
-		name=$1;
-		sub(/:$/, "", name);
-		$1 = "";
-		sub(/^ +/, "", $0);
-		print "dmsetup create " name " --table \"" $0 "\"";
-	}' >> "${DESTDIR}/scripts/localcrypt"
+dump_table >> "${DESTDIR}/scripts/localcrypt"
 chmod 755 "${DESTDIR}/scripts/localcrypt"
 
 for mod in dm_mod dm_crypt aes-x86_64 aesni-intel; do
