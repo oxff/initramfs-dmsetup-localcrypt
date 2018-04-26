@@ -14,21 +14,51 @@ prereqs)
         ;;
 esac
 
-. /usr/share/initramfs-tools/hook-functions
+# . /usr/share/initramfs-tools/hook-functions
 
-case "$(stat -c %D /boot/.)" in
-	08??)
-		echo '/boot seems to be on a regular SCSI block device!' >&2
-		exit 1
-		;;
-	*)
-		;;
-esac
+mmhextodec() {
+    set -- ${1##*[!0-9a-fA-F]*}
 
-if ! [ "$(stat -c %D /boot/.)" = "$(stat -c %D /.)" ]; then
-	echo '/boot seems to be on a different device than / !' >&2
-	exit 1
+    major=$((0x$1 >> 8))
+    minor=$((0x$1 & 255))
+
+    echo "${major}:${minor}"
+}
+
+mmblock_prop() {
+    udevadm info -q property /sys/dev/block/"$1" | grep "^$2="
+}
+
+has_crypt_parent() {
+    local mm DM_NAME DEV_NAME
+
+    mm="$1"
+
+    while :; do
+        DM_NAME=''
+        eval "$(mmblock_prop "${mm}" DM_NAME)"
+
+        if [ -z "${DM_NAME}" ]; then
+            eval "$(mmblock_prop "${mm}" DEVNAME)"
+            echo "WARNING: Cannot resolve DM parent of ${mm}[${DEVNAME}]" >&2
+            return 1
+        fi
+
+        eval $(dmsetup table "${DM_NAME}" | awk '
+            $3 == "crypt" { print $3, $7; }
+            $3 == "linear" { print $3, $4; }' | { read -r dmtype mm;
+            echo "dmtype=${dmtype} mm=${mm}"
+        })
+        
+        [ "$dmtype" == "crypt" ] && return 0
+    done
+}
+
+if ! has_crypt_parent $(mmhextodec "$(stat -c %D /boot)"); then
+    echo "ERROR: /boot doesn't seem to reside on a dm_crypt device!" >&2
+    exit 1
 fi
+
 
 mkdir -p "${DESTDIR}/scripts"
 
